@@ -6,29 +6,34 @@ const secret = () =>
   );
 
 export type CaptchaChallenge = {
-  imageUrl: string;
+  /** No external image — works offline / on mobile */
+  prompt: string;
+  emoji: string;
   options: string[];
   token: string;
+  /** legacy field so old clients don't crash */
+  imageUrl?: string;
 };
 
-/** Rotating easy quiz — always one correct answer in signed token */
+/** Emoji captcha — no CDN, works on phones even when images are blocked */
 const QUIZZES = [
   {
     answer: "Pikachu",
-    imageUrl:
-      "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png",
-    decoys: ["Raichu", "Eevee", "Jolteon"],
+    prompt: "Which Pokémon is the electric mouse?",
+    emoji: "⚡🐭",
+    decoys: ["Snorlax", "Gyarados", "Onix"],
   },
   {
     answer: "Pikachu",
-    imageUrl: "https://images.pokemontcg.io/base1/58.png",
+    prompt: "Ash’s yellow partner is…",
+    emoji: "🟡⚡",
+    decoys: ["Eevee", "Meowth", "Psyduck"],
+  },
+  {
+    answer: "Pikachu",
+    prompt: "Tap the correct name for ⚡",
+    emoji: "⚡",
     decoys: ["Charmander", "Squirtle", "Bulbasaur"],
-  },
-  {
-    answer: "Pikachu",
-    imageUrl:
-      "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png",
-    decoys: ["Meowth", "Psyduck", "Growlithe"],
   },
 ];
 
@@ -49,13 +54,15 @@ export async function createCaptchaChallenge(): Promise<CaptchaChallenge> {
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("10m")
+    .setExpirationTime("15m")
     .sign(secret());
 
   return {
-    imageUrl: q.imageUrl,
+    prompt: q.prompt,
+    emoji: q.emoji,
     options,
     token,
+    imageUrl: "",
   };
 }
 

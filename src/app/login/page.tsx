@@ -16,7 +16,8 @@ export default function LoginPage() {
   const [verified, setVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaAnswer, setCaptchaAnswer] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [prompt, setPrompt] = useState("Which Pokémon is the electric mouse?");
+  const [emoji, setEmoji] = useState("⚡");
   const [options, setOptions] = useState<string[]>([]);
   const [captchaLoading, setCaptchaLoading] = useState(true);
 
@@ -34,13 +35,26 @@ export default function LoginPage() {
     setVerified(false);
     setError(null);
     try {
-      const res = await fetch("/api/auth/captcha");
+      const res = await fetch("/api/auth/captcha", { credentials: "include" });
       const data = await res.json();
-      setImageUrl(data.imageUrl || "");
-      setOptions(data.options || []);
+      if (!res.ok) {
+        setError(data.error || "Could not load bot check");
+        // Offline fallback so phones can still continue if API glitches
+        setPrompt("Which Pokémon is the electric mouse?");
+        setEmoji("⚡");
+        setOptions(["Pikachu", "Snorlax", "Onix", "Gyarados"]);
+        setCaptchaToken("");
+        return;
+      }
+      setPrompt(data.prompt || "Which Pokémon is the electric mouse?");
+      setEmoji(data.emoji || "⚡");
+      setOptions(data.options || ["Pikachu", "Snorlax", "Onix", "Gyarados"]);
       setCaptchaToken(data.token || "");
     } catch {
-      setError("Could not load bot check");
+      setError("Could not load bot check — retry or check connection");
+      setPrompt("Which Pokémon is the electric mouse?");
+      setEmoji("⚡");
+      setOptions(["Pikachu", "Snorlax", "Onix", "Gyarados"]);
     } finally {
       setCaptchaLoading(false);
     }
@@ -63,10 +77,41 @@ export default function LoginPage() {
     ...extra,
   });
 
+  const handleAuthResult = async (
+    res: Response,
+    data: { error?: string; user?: unknown }
+  ) => {
+    if (!res.ok) {
+      const msg =
+        data.error ||
+        (res.status === 403
+          ? "Bot check failed — tap Pikachu again"
+          : res.status === 401
+            ? "Invalid email or password"
+            : res.status === 500
+              ? "Server error — wait for Railway to finish starting, then retry"
+              : `Failed (${res.status})`);
+      setError(msg);
+      setLoading(false);
+      if (res.status === 403) void loadCaptcha();
+      play("error");
+      return false;
+    }
+    setUser(data.user as never);
+    play("complete");
+    router.push("/open");
+    return true;
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!captchaAnswer) {
-      setError("Complete the Pokémon check first");
+      setError("Tap Pikachu in the check first");
+      return;
+    }
+    if (!captchaToken) {
+      setError("Bot check not ready — tap the refresh icon");
+      void loadCaptcha();
       return;
     }
     setLoading(true);
@@ -86,19 +131,18 @@ export default function LoginPage() {
           ),
         }
       );
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Failed");
+      let data: { error?: string; user?: unknown } = {};
+      try {
+        data = await res.json();
+      } catch {
+        setError(`Server returned ${res.status} — try again in a moment`);
         setLoading(false);
-        if (res.status === 403) void loadCaptcha();
         play("error");
         return;
       }
-      setUser(data.user);
-      play("complete");
-      router.push("/open");
+      await handleAuthResult(res, data);
     } catch {
-      setError("Network error");
+      setError("Network error — check connection / Railway is online");
       setLoading(false);
       play("error");
     }
@@ -106,7 +150,12 @@ export default function LoginPage() {
 
   const playAsGuest = async () => {
     if (!captchaAnswer) {
-      setError("Complete the Pokémon check first");
+      setError("Tap Pikachu in the check first");
+      return;
+    }
+    if (!captchaToken) {
+      setError("Bot check not ready — tap the refresh icon");
+      void loadCaptcha();
       return;
     }
     setLoading(true);
@@ -119,19 +168,18 @@ export default function LoginPage() {
         credentials: "include",
         body: JSON.stringify(authBody()),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Guest failed");
+      let data: { error?: string; user?: unknown } = {};
+      try {
+        data = await res.json();
+      } catch {
+        setError(`Server returned ${res.status} — try again in a moment`);
         setLoading(false);
-        if (res.status === 403) void loadCaptcha();
         play("error");
         return;
       }
-      setUser(data.user);
-      play("complete");
-      router.push("/open");
+      await handleAuthResult(res, data);
     } catch {
-      setError("Network error");
+      setError("Network error — check connection / Railway is online");
       setLoading(false);
       play("error");
     }
@@ -142,23 +190,22 @@ export default function LoginPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-strong w-full rounded-3xl p-8"
+        className="glass-strong w-full rounded-3xl p-6 sm:p-8"
       >
         <h1 className="text-2xl font-bold text-gradient">Trainer check-in</h1>
         <p className="mt-1 text-sm text-white/50">
-          Prove you&apos;re not a bot · then login, register, or play as guest
+          Tap <strong className="text-amber-200">Pikachu</strong>, then login or
+          guest
         </p>
 
-        {/* Bot verification */}
+        {/* Bot verification — emoji, no external images (mobile-friendly) */}
         <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold text-white/80">
-              What Pokémon is this?
-            </p>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-white/80">{prompt}</p>
             <button
               type="button"
               onClick={() => void loadCaptcha()}
-              className="rounded-lg p-1.5 text-white/45 hover:bg-white/10 hover:text-white"
+              className="shrink-0 rounded-lg p-1.5 text-white/45 hover:bg-white/10 hover:text-white"
               title="New challenge"
             >
               <RefreshCw
@@ -167,17 +214,11 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="mx-auto mb-4 flex h-36 w-36 items-center justify-center overflow-hidden rounded-2xl border border-amber-300/30 bg-gradient-to-br from-yellow-400/20 to-amber-600/10">
-            {imageUrl && !captchaLoading ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imageUrl}
-                alt="Mystery Pokémon"
-                className="h-full w-full object-contain p-2"
-                draggable={false}
-              />
+          <div className="mx-auto mb-4 flex h-28 w-full items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-yellow-400/25 to-amber-600/15 text-5xl">
+            {captchaLoading ? (
+              <span className="text-sm text-white/40">Loading…</span>
             ) : (
-              <span className="text-white/40 text-sm">Loading…</span>
+              <span aria-hidden>{emoji}</span>
             )}
           </div>
 
@@ -188,7 +229,7 @@ export default function LoginPage() {
                 type="button"
                 disabled={captchaLoading}
                 onClick={() => pickAnswer(opt)}
-                className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                className={`min-h-[48px] rounded-xl border px-3 py-3 text-sm font-medium transition active:scale-[0.98] ${
                   captchaAnswer === opt
                     ? "border-amber-300/70 bg-amber-400/20 text-amber-100 ring-2 ring-amber-300/40"
                     : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
@@ -201,12 +242,17 @@ export default function LoginPage() {
 
           {verified && captchaAnswer && (
             <p className="mt-3 text-center text-xs text-emerald-300">
-              Selected: {captchaAnswer} — you can continue below
+              Selected: {captchaAnswer} — continue below
             </p>
           )}
         </div>
 
-        {/* Auth forms — only interactive after selection (still validated server-side) */}
+        {error && (
+          <p className="mt-4 rounded-xl border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-sm text-rose-100">
+            {error}
+          </p>
+        )}
+
         <div
           className={`mt-6 transition ${
             captchaAnswer ? "opacity-100" : "pointer-events-none opacity-40"
@@ -218,7 +264,7 @@ export default function LoginPage() {
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
-                className={`flex-1 rounded-lg py-2 text-sm capitalize ${
+                className={`flex-1 rounded-lg py-2.5 text-sm capitalize ${
                   mode === m ? "bg-white/15 text-white" : "text-white/50"
                 }`}
               >
@@ -233,9 +279,10 @@ export default function LoginPage() {
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-violet-400/60"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-base outline-none focus:border-violet-400/60"
               />
             </label>
 
@@ -245,9 +292,10 @@ export default function LoginPage() {
                   <span className="text-white/60">Username</span>
                   <input
                     required
+                    autoComplete="username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-violet-400/60"
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-base outline-none focus:border-violet-400/60"
                   />
                 </label>
                 <div>
@@ -258,7 +306,7 @@ export default function LoginPage() {
                         key={a}
                         type="button"
                         onClick={() => setAvatar(a)}
-                        className={`h-10 w-10 rounded-full text-lg ${
+                        className={`h-11 w-11 rounded-full text-lg ${
                           avatar === a
                             ? "ring-2 ring-violet-400 bg-white/15"
                             : "bg-white/5"
@@ -277,42 +325,47 @@ export default function LoginPage() {
               <input
                 type="password"
                 required
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 outline-none focus:border-violet-400/60"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-base outline-none focus:border-violet-400/60"
               />
             </label>
 
-            {error && <p className="text-sm text-rose-300">{error}</p>}
-
-            <Button type="submit" className="w-full" disabled={loading || !captchaAnswer}>
-              {loading ? "…" : mode === "login" ? "Login" : "Register"}
+            <Button
+              type="submit"
+              className="w-full min-h-[48px]"
+              disabled={loading || !captchaAnswer}
+            >
+              {loading ? "Working…" : mode === "login" ? "Login" : "Register"}
             </Button>
           </form>
 
           <div className="relative my-5 text-center">
-            <span className="relative z-10 bg-transparent px-2 text-xs text-white/35">
-              or
-            </span>
+            <span className="relative z-10 px-2 text-xs text-white/35">or</span>
             <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/10" />
           </div>
 
           <Button
             type="button"
             variant="ghost"
-            className="w-full"
+            className="w-full min-h-[48px]"
             disabled={loading || !captchaAnswer}
             onClick={() => void playAsGuest()}
           >
             Play as guest
           </Button>
           <p className="mt-2 text-center text-[11px] text-white/40">
-            Guest gets a random trainer + starting Pikadollars · no email needed
+            No email · random trainer · starting Pikadollars
           </p>
         </div>
 
         <p className="mt-5 text-center text-xs text-white/35">
           Demo: demo@holovault.app · demo1234
+          <br />
+          Always pick <span className="text-amber-200">Pikachu</span>
         </p>
       </motion.div>
     </div>

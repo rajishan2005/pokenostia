@@ -119,25 +119,45 @@ async function resolveExpansions(): Promise<ExpansionData[]> {
   return ordered;
 }
 
+/**
+ * Fast path for login / guest / register — must never hang mobile browsers.
+ * Does NOT fetch the full TCG catalog.
+ */
+export async function ensureAuthReady() {
+  try {
+    await ensureDemoUser();
+  } catch (e) {
+    console.error("ensureDemoUser", e);
+  }
+  try {
+    await ensureAchievements();
+  } catch (e) {
+    console.error("ensureAchievements", e);
+  }
+  try {
+    await ensureShopPacks();
+  } catch (e) {
+    console.error("ensureShopPacks", e);
+  }
+}
+
 export async function ensureSeeded() {
   if (seeded) return;
   const count = await prisma.card.count();
   if (count > 0) {
     seeded = true;
-    await ensureAchievements();
-    await ensureDemoUser();
-    try {
-      await ensureShopPacks();
-    } catch (e) {
-      console.error("shop packs seed", e);
-    }
-    // Keep bots / grails / shop listings topped up
-    try {
-      await ensureWorldFlavor();
-    } catch (e) {
-      console.error("world flavor seed", e);
-    }
+    await ensureAuthReady();
+    // Heavy flavor in background — don't block requests
+    void ensureWorldFlavor().catch((e) =>
+      console.error("world flavor seed", e)
+    );
     return;
+  }
+  // First boot: seed catalog (can be slow) — still try demo user first
+  try {
+    await ensureDemoUser();
+  } catch (e) {
+    console.error(e);
   }
   await reseedPokemonCards(false);
 }

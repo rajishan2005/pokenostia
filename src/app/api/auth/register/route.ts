@@ -7,7 +7,7 @@ import {
   toPublicUser,
   withAuthCookie,
 } from "@/lib/auth";
-import { ensureSeeded } from "@/lib/seed";
+import { ensureAuthReady } from "@/lib/seed";
 import { verifyCaptcha } from "@/lib/captcha";
 import { STARTING_BALANCE } from "@/lib/currency";
 
@@ -22,7 +22,7 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   try {
-    await ensureSeeded();
+    await ensureAuthReady();
     const body = schema.parse(await req.json());
 
     const captchaOk = await verifyCaptcha(body.captchaToken, body.captchaAnswer);

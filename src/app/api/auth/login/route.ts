@@ -7,7 +7,7 @@ import {
   verifyPassword,
   withAuthCookie,
 } from "@/lib/auth";
-import { ensureSeeded } from "@/lib/seed";
+import { ensureAuthReady } from "@/lib/seed";
 import { dateKey } from "@/lib/utils";
 import { verifyCaptcha } from "@/lib/captcha";
 
@@ -20,7 +20,7 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   try {
-    await ensureSeeded();
+    await ensureAuthReady();
     const body = schema.parse(await req.json());
 
     const captchaOk = await verifyCaptcha(body.captchaToken, body.captchaAnswer);
