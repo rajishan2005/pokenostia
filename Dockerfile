@@ -1,12 +1,15 @@
 # PokeNostia — Railway / container deploy
 FROM node:20-alpine AS deps
 WORKDIR /app
+# Prisma needs OpenSSL libs on Alpine
+RUN apk add --no-cache libc6-compat openssl
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN npm ci
 
 FROM node:20-alpine AS builder
 WORKDIR /app
+RUN apk add --no-cache libc6-compat openssl
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -17,6 +20,9 @@ RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
+# Critical: without these, Prisma 5.x crashes looking for libssl on Alpine
+RUN apk add --no-cache libc6-compat openssl
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
