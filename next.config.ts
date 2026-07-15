@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Smaller Docker/Railway images (only production server files)
+  output: "standalone",
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.pokemontcg.io" },
