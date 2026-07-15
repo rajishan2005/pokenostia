@@ -1,26 +1,803 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-deep: #07061a;
+  --bg-mid: #12103a;
+  --bg-glow: #2a1f6b;
+  --accent: #7c5cff;
+  --accent-2: #ff6bcb;
+  --accent-3: #46e0ff;
+  --gold: #ffd56a;
+  --glass: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --text: #f4f2ff;
+  --muted: #a9a3c7;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg-deep);
+  --color-foreground: var(--text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100dvh;
+  color: var(--text);
+  background: radial-gradient(1200px 600px at 50% -10%, #2a1f6b 0%, transparent 55%),
+    radial-gradient(800px 400px at 100% 20%, #3a1560 0%, transparent 40%),
+    radial-gradient(700px 500px at 0% 80%, #0e3a4a 0%, transparent 45%),
+    linear-gradient(180deg, #0a0824 0%, #07061a 100%);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.glass-strong {
+  background: rgba(12, 10, 40, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* Holo foil — bright WHITE shine band that sweeps across rare cards */
+.holo-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Soft white veil so art still reads */
+.holo-shine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    transparent 42%,
+    transparent 58%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+}
+
+/* Main white blade sweep — high contrast, no blend-mode washout */
+.holo-shine::after {
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: -80%;
+  z-index: 4;
+  width: 55%;
+  height: 160%;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 28%,
+    rgba(255, 255, 255, 0.25) 42%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.3) 58%,
+    rgba(255, 255, 255, 0) 72%,
+    transparent 100%
+  );
+  transform: skewX(-18deg);
+  animation: white-shine-sweep 2.6s ease-in-out infinite;
+}
+
+/* Super rare — thicker/brighter white + faster */
+.holo-shine-super::after {
+  width: 65%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 22%,
+    rgba(255, 255, 255, 0.35) 38%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 255, 255, 0.4) 62%,
+    rgba(255, 255, 255, 0) 78%,
+    transparent 100%
+  );
+  animation: white-shine-sweep 1.9s ease-in-out infinite;
+}
+
+.holo-shine-super::before {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
+}
+
+/* Grail — double-speed hot white */
+.holo-shine-grail::after {
+  width: 72%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 18%,
+    rgba(255, 255, 255, 0.45) 36%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0.5) 64%,
+    rgba(255, 255, 255, 0) 82%,
+    transparent 100%
+  );
+  animation: white-shine-sweep 1.45s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.65));
+}
+
+/* Explicit band element (pack cards) — most reliable */
+.white-shine-band {
+  position: absolute;
+  top: -40%;
+  left: -90%;
+  z-index: 5;
+  width: 50%;
+  height: 180%;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 30%,
+    rgba(255, 255, 255, 0.2) 42%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(255, 255, 255, 0.25) 58%,
+    transparent 70%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  animation: white-shine-sweep 2.4s ease-in-out infinite;
+}
+
+.white-shine-band--super {
+  width: 58%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 25%,
+    rgba(255, 255, 255, 0.35) 40%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0.4) 60%,
+    transparent 75%,
+    transparent 100%
+  );
+  animation: white-shine-sweep 1.75s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.55));
+}
+
+.white-shine-band--grail {
+  width: 68%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 20%,
+    rgba(255, 255, 255, 0.5) 38%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0.55) 62%,
+    transparent 80%,
+    transparent 100%
+  );
+  animation: white-shine-sweep 1.35s ease-in-out infinite;
+  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.85));
+}
+
+/* $1k+ market value — strong golden foil */
+.holo-shine-gold {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(251, 191, 36, 0.65) !important;
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.55),
+    0 0 28px rgba(251, 191, 36, 0.45),
+    0 0 48px rgba(245, 158, 11, 0.25) !important;
+}
+
+.holo-shine-gold::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 215, 100, 0.22) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(255, 190, 50, 0.14) 100%
+  );
+}
+
+.holo-shine-gold::after {
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: -80%;
+  z-index: 4;
+  width: 70%;
+  height: 160%;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 236, 160, 0) 20%,
+    rgba(255, 220, 100, 0.45) 38%,
+    rgba(255, 248, 220, 0.98) 50%,
+    rgba(255, 200, 60, 0.55) 62%,
+    rgba(255, 180, 40, 0) 80%,
+    transparent 100%
+  );
+  transform: skewX(-18deg);
+  animation: white-shine-sweep 1.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.9));
+}
+
+.gold-shine-band {
+  position: absolute;
+  top: -40%;
+  left: -90%;
+  z-index: 6;
+  width: 62%;
+  height: 180%;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 22%,
+    rgba(255, 210, 80, 0.4) 40%,
+    rgba(255, 248, 210, 1) 50%,
+    rgba(255, 190, 50, 0.55) 60%,
+    transparent 78%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  animation: white-shine-sweep 1.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 16px rgba(251, 191, 36, 0.95));
+}
+
+.gold-sparkle {
+  z-index: 7;
+  background-image:
+    radial-gradient(circle at 18% 28%, rgba(255, 240, 180, 1) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 72% 18%, rgba(255, 215, 80, 1) 0 2px, transparent 3px),
+    radial-gradient(circle at 48% 72%, rgba(255, 248, 200, 0.95) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 88% 58%, rgba(255, 200, 60, 1) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 32% 88%, rgba(255, 230, 140, 0.9) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 60% 40%, rgba(255, 250, 220, 1) 0 1px, transparent 2px);
+  animation: sparkle-twinkle 1.5s ease-in-out infinite;
+}
+
+/* Tiny white sparkles for super+ */
+.card-sparkle {
+  z-index: 6;
+  background-image:
+    radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 1) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 72% 18%, rgba(255, 255, 255, 0.95) 0 2px, transparent 3px),
+    radial-gradient(circle at 48% 72%, rgba(255, 255, 255, 0.9) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 88% 58%, rgba(255, 255, 255, 1) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 32% 88%, rgba(255, 255, 255, 0.85) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 60% 40%, rgba(255, 255, 255, 0.9) 0 1px, transparent 2px);
+  animation: sparkle-twinkle 1.8s ease-in-out infinite;
+}
+
+@keyframes white-shine-sweep {
+  0% {
+    left: -90%;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    left: 130%;
+    opacity: 0;
+  }
+}
+
+@keyframes sparkle-twinkle {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-glow-soft {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.1);
+  }
+}
+
+/* Keep old name for any remaining uses */
+@keyframes holo-sweep {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes pack-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-2.5deg);
+  }
+  75% {
+    transform: rotate(2.5deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-float {
+  animation: float-y 6s ease-in-out infinite;
+}
+
+.animate-wiggle {
+  animation: pack-wiggle 0.45s ease-in-out infinite;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.04)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 92, 255, 0.35);
+  border-radius: 999px;
+}
+
+/* Card 3D perspective helpers */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* Binder page texture */
+.binder-page {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.03), transparent 40%),
+    linear-gradient(145deg, #1a1438 0%, #120e2a 50%, #0e0a22 100%);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #fff 0%, #c4b5fd 40%, #f0abfc 70%, #67e8f9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #7c5cff 0%, #a855f7 50%, #ec4899 100%);
+  box-shadow: 0 0 24px rgba(124, 92, 255, 0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.btn-primary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 36px rgba(168, 85, 247, 0.55);
+  filter: brightness(1.08);
+}
+.btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+/* Opacity-only so it never fights the CSS lift transform */
+@keyframes deal-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pack-shake-kf {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  25% {
+    transform: translate(-5px, 1px) rotate(-2deg);
+  }
+  50% {
+    transform: translate(6px, -1px) rotate(2deg);
+  }
+  75% {
+    transform: translate(-4px, 0) rotate(-1deg);
+  }
+}
+
+.pack-shake {
+  animation: pack-shake-kf 0.11s linear infinite;
+}
+
+.deal-card-enter {
+  animation: deal-in 0.32s ease-out both;
+}
+
+/* Pack top cut-open: blade sweeps L→R, flaps split, cards rise */
+@keyframes pack-cut-beam {
+  0% {
+    width: 0%;
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    width: 100%;
+    opacity: 0.35;
+  }
+}
+
+@keyframes pack-cut-blade {
+  0% {
+    left: -4%;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes pack-cut-flap-left {
+  0% {
+    transform: rotate(0deg) translate(0, 0);
+    opacity: 1;
+  }
+  45% {
+    transform: rotate(0deg) translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-28deg) translate(-18%, -12%);
+    opacity: 0.2;
+  }
+}
+
+@keyframes pack-cut-flap-right {
+  0% {
+    transform: rotate(0deg) translate(0, 0);
+    opacity: 1;
+  }
+  45% {
+    transform: rotate(0deg) translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(28deg) translate(18%, -12%);
+    opacity: 0.2;
+  }
+}
+
+@keyframes pack-cut-card-up {
+  0% {
+    transform: translateY(40%) scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.pack-cut-beam {
+  width: 0%;
+  animation: pack-cut-beam 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.pack-cut-blade {
+  animation: pack-cut-blade 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.pack-cut-flap-left {
+  transform-origin: top left;
+  animation: pack-cut-flap-left 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.pack-cut-flap-right {
+  transform-origin: top right;
+  animation: pack-cut-flap-right 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.pack-cut-card {
+  opacity: 0;
+  animation: pack-cut-card-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Pack seal-break aesthetic flash — immersive */
+.pack-open-flash {
+  background:
+    radial-gradient(
+      circle at 50% 42%,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 250, 230, 0.95) 12%,
+      rgba(253, 224, 71, 0.7) 28%,
+      rgba(239, 68, 68, 0.45) 48%,
+      rgba(37, 99, 235, 0.3) 65%,
+      transparent 82%
+    );
+  animation: pack-open-flash-kf 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  mix-blend-mode: screen;
+}
+
+.pack-open-flash--hard {
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      #fff 0%,
+      rgba(255, 255, 255, 1) 8%,
+      rgba(254, 243, 199, 0.98) 18%,
+      rgba(251, 191, 36, 0.85) 32%,
+      rgba(239, 68, 68, 0.55) 50%,
+      rgba(59, 130, 246, 0.4) 68%,
+      transparent 88%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.55),
+      rgba(255, 255, 255, 0.12) 45%,
+      transparent
+    );
+  animation: pack-open-flash-hard-kf 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  mix-blend-mode: plus-lighter;
+}
+
+@keyframes pack-open-flash-kf {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  45% {
+    opacity: 0.85;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes pack-open-flash-hard-kf {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+    filter: brightness(1.2);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1.08);
+    filter: brightness(1.8);
+  }
+  35% {
+    opacity: 0.95;
+    transform: scale(1.15);
+    filter: brightness(1.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+    filter: brightness(1);
+  }
+}
+
+/* High-value pull cinematic */
+.jackpot-overlay {
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0.72) 70%
+  );
+  animation: jackpot-fade 2.8s ease-out forwards;
+}
+
+.jackpot-burst {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(251, 191, 36, 0.45) 0%,
+      transparent 55%
+    );
+  animation: jackpot-burst-kf 2.8s ease-out forwards;
+}
+
+.jackpot-card {
+  animation: jackpot-card-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes jackpot-fade {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes jackpot-burst-kf {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes jackpot-card-pop {
+  0% {
+    transform: scale(0.5) rotate(-8deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Multi-rare side-by-side showcase */
+.rare-multi-stage {
+  animation: rare-multi-fade-in 0.35s ease-out both;
+}
+
+.rare-multi-row {
+  padding: 12px 16px 10px;
+  border-radius: 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.25),
+    rgba(0, 0, 0, 0.55)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.rare-multi-card {
+  opacity: 0;
+  animation: rare-multi-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes rare-multi-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rare-multi-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) translateY(28px) rotate(-12deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.08) translateY(-4px) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
 }

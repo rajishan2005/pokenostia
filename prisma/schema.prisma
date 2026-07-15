@@ -1,0 +1,238 @@
+// HoloVault — franchise-agnostic TCG pack engine
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Note: DATABASE_URL=file:./dev.db
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  username        String   @unique
+  passwordHash    String
+  avatar          String   @default("✨")
+  coins           Int      @default(500)
+  collectionScore Int      @default(0)
+  totalPacks      Int      @default(0)
+  totalRares      Int      @default(0)
+  favoriteCardId  String?
+  loginStreak     Int      @default(0)
+  lastLoginDate   String?
+  birthday        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  collection     CollectionItem[]
+  packOpenings   PackOpening[]
+  achievements   UserAchievement[]
+  gameScores     GameScore[]
+  pulls          PullEvent[]
+  listingsSold   MarketListing[] @relation("ListingsSold")
+  listingsBought MarketListing[] @relation("ListingsBought")
+  trades         TradeHistory[]
+  giftsSent      CardGift[]      @relation("GiftsSent")
+  giftsReceived  CardGift[]      @relation("GiftsReceived")
+}
+
+model Card {
+  id          String   @id
+  name        String
+  hp          String?
+  types       String
+  rarity      String
+  rarityTier  Int      @default(1)
+  setId       String
+  setName     String
+  setSeries   String?
+  artist      String?
+  imageSmall  String?
+  imageLarge  String?
+  marketPrice Float    @default(0)
+  releaseDate String?
+  number      String?
+  supertype   String?
+  maxSupply   Int      @default(1000)
+  remaining   Int      @default(1000)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  collection CollectionItem[]
+  pulls      PullEvent[]
+  listings   MarketListing[]
+  trades     TradeHistory[]
+  gifts      CardGift[]
+
+  @@index([rarityTier])
+  @@index([setId])
+  @@index([marketPrice])
+}
+
+model Expansion {
+  id          String  @id
+  name        String
+  series      String?
+  releaseDate String?
+  totalCards  Int     @default(0)
+  packSize    Int     @default(10)
+  packCost    Int     @default(100)
+  imageUrl    String?
+  logoUrl     String?
+  active      Boolean @default(true)
+}
+
+model CollectionItem {
+  id        String   @id @default(cuid())
+  userId    String
+  cardId    String
+  quantity  Int      @default(1)
+  /// Starred / keep — excluded from quick-sell & sell-all
+  locked    Boolean  @default(false)
+  firstPull DateTime @default(now())
+  lastPull  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cardId])
+  @@index([userId])
+}
+
+model PackOpening {
+  id          String   @id @default(cuid())
+  userId      String
+  expansionId String
+  cardIds     String
+  rarestTier  Int      @default(1)
+  totalValue  Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model PullEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  cardId    String
+  rarity    String
+  isPublic  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([rarity])
+}
+
+model Achievement {
+  id          String @id
+  name        String
+  description String
+  icon        String
+  coins       Int    @default(50)
+
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}
+
+model GameScore {
+  id          String   @id @default(cuid())
+  userId      String
+  gameId      String
+  score       Int
+  coinsEarned Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, gameId])
+}
+
+model DailyRewardClaim {
+  id         String   @id @default(cuid())
+  userId     String
+  dateKey    String
+  rewardType String
+  coins      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, dateKey, rewardType])
+  @@index([userId])
+}
+
+// Player-to-player card listings (Pikadollars)
+model MarketListing {
+  id        String    @id @default(cuid())
+  sellerId  String
+  buyerId   String?
+  cardId    String
+  price     Float
+  status    String    @default("active") // active | sold | cancelled
+  createdAt DateTime  @default(now())
+  soldAt    DateTime?
+
+  seller User @relation("ListingsSold", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer  User? @relation("ListingsBought", fields: [buyerId], references: [id], onDelete: SetNull)
+  card   Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([sellerId])
+  @@index([cardId])
+}
+
+// Quick sells, list sales, purchases
+model TradeHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  cardId      String
+  type        String // quick_sell | sell_all | listed | sold | bought | cancelled | gift_sent | gift_received
+  amount      Float    @default(0)
+  marketPrice Float?
+  percent     Int?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// Player-to-player free gifts / direct sends (global by unique username)
+model CardGift {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  cardId     String
+  message    String?
+  status     String   @default("completed") // completed | failed
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("GiftsSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("GiftsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  card     Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([cardId])
+}
