@@ -3,9 +3,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
   hashPassword,
-  setAuthCookie,
   signToken,
   toPublicUser,
+  withAuthCookie,
 } from "@/lib/auth";
 import { ensureSeeded } from "@/lib/seed";
 import { verifyCaptcha } from "@/lib/captcha";
@@ -45,11 +45,10 @@ export async function POST(req: Request) {
     });
 
     const token = await signToken(user.id);
-    await setAuthCookie(token);
-    return NextResponse.json({
+    return withAuthCookie({
       user: toPublicUser(user),
       guest: true,
-    });
+    }, token);
   } catch (e) {
     if (e instanceof z.ZodError) {
       return NextResponse.json({ error: e.issues[0]?.message }, { status: 400 });

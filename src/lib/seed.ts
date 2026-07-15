@@ -301,7 +301,9 @@ async function ensureDemoUser() {
       coins: DEMO_BALANCE,
     },
     update: {
-      // keep existing progress; only bump if broke
+      // Keep demo password working on Railway (resets to demo1234)
+      passwordHash: demoHash,
+      username: "TrainerAsh",
     },
   });
 }

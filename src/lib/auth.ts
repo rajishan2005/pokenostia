@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { prisma } from "./prisma";
 import type { UserPublic } from "@/types";
 
@@ -9,6 +10,20 @@ const secret = () =>
   new TextEncoder().encode(
     process.env.JWT_SECRET || "holovault-dev-secret-change-in-production"
   );
+
+function cookieOptions() {
+  // Secure cookies only over HTTPS (Railway / Cloudflare production)
+  const secure =
+    process.env.NODE_ENV === "production" ||
+    process.env.COOKIE_SECURE === "true";
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  };
+}
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
@@ -67,20 +82,29 @@ export function toPublicUser(u: {
   };
 }
 
+/** Prefer this in Route Handlers — Set-Cookie is attached to the response */
+export function withAuthCookie<T>(data: T, token: string, init?: ResponseInit) {
+  const res = NextResponse.json(data, init);
+  res.cookies.set(COOKIE, token, cookieOptions());
+  return res;
+}
+
 export async function setAuthCookie(token: string) {
   const jar = await cookies();
-  jar.set(COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  jar.set(COOKIE, token, cookieOptions());
 }
 
 export async function clearAuthCookie() {
   const jar = await cookies();
   jar.delete(COOKIE);
+}
+
+export function clearAuthCookieOn(res: NextResponse) {
+  res.cookies.set(COOKIE, "", {
+    ...cookieOptions(),
+    maxAge: 0,
+  });
+  return res;
 }
 
 export async function getSessionUser() {

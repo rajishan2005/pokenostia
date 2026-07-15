@@ -17,7 +17,7 @@ export const useUserStore = create<UserState>((set) => ({
   setUser: (user) => set({ user, loading: false }),
   refresh: async () => {
     try {
-      const res = await fetch("/api/auth/me");
+      const res = await fetch("/api/auth/me", { credentials: "include" });
       if (!res.ok) {
         set({ user: null, loading: false });
         return;
@@ -29,7 +29,10 @@ export const useUserStore = create<UserState>((set) => ({
     }
   },
   logout: async () => {
-    await fetch("/api/auth/me", { method: "DELETE" });
+    await fetch("/api/auth/me", {
+      method: "DELETE",
+      credentials: "include",
+    });
     set({ user: null });
   },
 }));

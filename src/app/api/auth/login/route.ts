@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
-  setAuthCookie,
   signToken,
   toPublicUser,
   verifyPassword,
+  withAuthCookie,
 } from "@/lib/auth";
 import { ensureSeeded } from "@/lib/seed";
 import { dateKey } from "@/lib/utils";
@@ -54,8 +54,8 @@ export async function POST(req: Request) {
     }
 
     const token = await signToken(user.id);
-    await setAuthCookie(token);
-    return NextResponse.json({ user: toPublicUser(user) });
+    // Must set cookie on the response for Railway/production to keep session
+    return withAuthCookie({ user: toPublicUser(user) }, token);
   } catch (e) {
     if (e instanceof z.ZodError) {
       return NextResponse.json({ error: e.issues[0]?.message }, { status: 400 });

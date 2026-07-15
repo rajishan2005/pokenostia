@@ -78,6 +78,7 @@ export default function LoginPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify(
             mode === "login"
               ? authBody({ email, password })
@@ -115,6 +116,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/guest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(authBody()),
       });
       const data = await res.json();
