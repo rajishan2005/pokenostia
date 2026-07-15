@@ -1,12 +1,12 @@
-# Railway deploy config for HoloVault
-# Dashboard: New Project → Deploy from GitHub → add this repo
-# Optional: attach a Volume at /data for SQLite persistence
+# Railway: deploy from GitHub, then set JWT_SECRET + volume /data
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-healthcheckPath = "/"
-healthcheckTimeout = 30
+# Use lightweight health route (not "/") so cold seed never fails the check
+healthcheckPath = "/api/health"
+# First boot: prisma push + next start can take a while
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

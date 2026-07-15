@@ -1,4 +1,4 @@
-# HoloVault — Railway / container deploy
+# PokeNostia — Railway / container deploy
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -10,6 +10,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Dummy URL so prisma generate never fails during build
+ENV DATABASE_URL="file:./build.db"
 RUN npx prisma generate
 RUN npm run build
 
@@ -18,8 +20,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+ENV DATABASE_URL="file:/data/holovault.db"
 
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs \
+  && mkdir -p /data \
+  && chown -R nextjs:nodejs /data
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
@@ -28,13 +35,12 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/next.config.ts ./next.config.ts
+COPY scripts/docker-entrypoint.js /app/docker-entrypoint.js
 
-# SQLite data dir (mount Railway volume here for persistence)
-RUN mkdir -p /data && chown -R nextjs:nodejs /data
-ENV DATABASE_URL="file:/data/holovault.db"
+RUN chown -R nextjs:nodejs /app
 
-USER nextjs
+# root so /data volume is writable even when Railway mounts as root
+USER root
 EXPOSE 3000
 
-# Push schema then start
-CMD ["sh", "-c", "npx prisma db push --skip-generate && npx next start -p ${PORT:-3000}"]
+CMD ["node", "/app/docker-entrypoint.js"]
